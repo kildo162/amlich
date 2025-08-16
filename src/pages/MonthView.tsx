@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getMonthMatrix, isSameDay, isSameMonth, startOfMonth, endOfMonth } from '@utils/calendar'
 import { convertSolar2Lunar, jdFromDate } from '@utils/lunar'
 import { getLunarHoliday, getSolarHoliday } from '@utils/holidays'
@@ -10,6 +10,11 @@ export default function MonthView({ selected, onPickDate, switchToDay }: {
   onPickDate: (d: Date) => void
   switchToDay: () => void
 }) {
+  // Tooltip / preview state (desktop hover + mobile long-press)
+  const [preview, setPreview] = useState<{ x: number; y: number; d: Date | null; lunar?: {day:number;month:number;leap?:boolean}; holiday?: string; good?: boolean; bad?: boolean; hasReminder?: boolean } | null>(null)
+  const longPressTimer = useRef<number | null>(null)
+  const longPressActivated = useRef(false)
+  const ignoreNextClick = useRef(false)
   const weeks = getMonthMatrix(selected)
   const monthLabel = selected.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
 
@@ -56,17 +61,17 @@ export default function MonthView({ selected, onPickDate, switchToDay }: {
     <section className="mt-6">
       <div className="flex items-center justify-between mb-3">
         <h1 className="text-xl sm:text-2xl font-semibold">{monthLabel}</h1>
-        <div className="text-sm text-gray-500">Chọn ngày để xem chi tiết</div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">Chọn ngày để xem chi tiết</div>
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] gap-3">
         <div>
-          <div className="grid grid-cols-7 text-center text-[11px] sm:text-xs font-medium text-gray-500">
+          <div className="grid grid-cols-7 text-center text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400">
             {['T2','T3','T4','T5','T6','T7','CN'].map((h, i) => (
-              <div key={h} className={`py-1.5 ${i===6?'text-amber-700':''}`}>{h}</div>
+              <div key={h} className={`py-1.5 ${i===6?'text-amber-700 dark:text-amber-300':''}`}>{h}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5 relative">
             {weeks.flat().map((d, idx) => {
               const lunar = convertSolar2Lunar(d.getDate(), d.getMonth()+1, d.getFullYear())
               const isCurMonth = isSameMonth(d, selected)
@@ -86,25 +91,66 @@ export default function MonthView({ selected, onPickDate, switchToDay }: {
               const holidayName = solarHol?.name || lunarHol?.name || (isRam ? 'Rằm' : isM1 ? 'Mùng 1' : '')
               const hasReminder = reminderKeySet.has(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`)
 
-              const cellBase = 'relative aspect-[6/5] p-1.5 sm:p-2 text-left rounded-lg border hover:ring-1 hover:ring-primary/40 overflow-hidden'
+              const cellBase = 'relative aspect-[6/5] p-1.5 sm:p-2 text-left rounded-lg border hover:ring-1 hover:ring-primary/40 overflow-hidden transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 active:scale-[0.99] transform-gpu'
               const cellTone = isSel
-                ? 'border-primary bg-sky-50'
+                ? 'border-primary bg-sky-50 dark:bg-sky-900/20'
                 : isToday
-                  ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400'
+                  ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-400 dark:bg-emerald-900/20'
                   : isWeekend
-                    ? 'border-amber-200 bg-amber-50'
-                    : 'border-gray-200 bg-white'
+                    ? 'border-amber-200 bg-amber-50 dark:border-amber-400/40 dark:bg-amber-900/20'
+                    : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
               const cellDim = isCurMonth ? '' : 'opacity-50'
 
-              const dateNumCls = `text-lg sm:text-xl font-bold ${isToday ? 'text-emerald-700' : (isWeekend ? 'text-amber-700' : 'text-gray-900')}`
-              const lunarBadgeCls = `px-1.5 py-0.5 rounded ${isM1||isRam ? 'bg-primary/10 text-primary font-semibold' : 'bg-gray-100 text-gray-600'} text-[10px] sm:text-xs`
+              const dateNumCls = `text-lg sm:text-xl font-bold ${isToday ? 'text-emerald-700 dark:text-emerald-300' : (isWeekend ? 'text-amber-700 dark:text-amber-300' : 'text-gray-900 dark:text-gray-100')}`
+              const lunarBadgeCls = `px-1.5 py-0.5 rounded ${isM1||isRam ? 'bg-primary/10 dark:bg-primary/20 text-primary font-semibold' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'} text-[10px] sm:text-xs`
               const dayDotCls = `absolute top-1 right-1 h-2 w-2 rounded-full ${isGoodDay ? 'bg-emerald-500' : isBadDay ? 'bg-rose-500' : 'bg-gray-300'}`
               const remindDotCls = 'absolute top-1.5 left-1.5 h-2 w-2 rounded-full bg-blue-500'
 
+              const handleClick = () => {
+                if (ignoreNextClick.current) { ignoreNextClick.current = false; return }
+                onPickDate(d); switchToDay()
+              }
+              const showPreview = (x: number, y: number) => setPreview({ x, y, d, lunar: { day: lunar.day, month: lunar.month, leap: !!lunar.leap }, holiday: holidayName || undefined, good: isGoodDay, bad: isBadDay, hasReminder })
+              const onMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                showPreview(rect.left + rect.width, rect.top)
+              }
+              const onMouseLeave = () => setPreview(p => (p && p.d && isSameDay(p.d, d)) ? null : p)
+              const onFocus: React.FocusEventHandler<HTMLButtonElement> = (e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                showPreview(rect.left + rect.width, rect.top)
+              }
+              const onBlur: React.FocusEventHandler<HTMLButtonElement> = () => setPreview(p => (p && p.d && isSameDay(p.d, d)) ? null : p)
+              const onTouchStart = (e: React.TouchEvent) => {
+                longPressActivated.current = false
+                const touch = e.touches[0]
+                const startX = touch.clientX, startY = touch.clientY
+                longPressTimer.current = window.setTimeout(() => {
+                  longPressActivated.current = true
+                  showPreview(startX + 8, startY + 8)
+                }, 400) as unknown as number
+              }
+              const cancelLongPress = () => { if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null } }
+              const onTouchMove = () => cancelLongPress()
+              const onTouchEnd = (e: React.TouchEvent) => {
+                cancelLongPress()
+                if (longPressActivated.current) {
+                  // prevent navigation caused by synthesized click
+                  ignoreNextClick.current = true
+                  e.preventDefault(); e.stopPropagation()
+                }
+              }
               return (
                 <button
                   key={idx}
-                  onClick={() => { onPickDate(d); switchToDay() }}
+                  onClick={handleClick}
+                  onMouseEnter={onMouseEnter}
+                  onMouseLeave={onMouseLeave}
+                  onFocus={onFocus}
+                  onBlur={onBlur}
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
                   className={`${cellBase} ${cellTone} ${cellDim}`}
                   title={`${d.toLocaleDateString('vi-VN')} • AL ${lunar.day}/${lunar.month}${lunar.leap?' (nhuận)':''}${holidayName? ' • '+holidayName:''}${hasReminder?' • Có nhắc nhở':''}`}
                   aria-current={isToday ? 'date' : undefined}
@@ -120,11 +166,30 @@ export default function MonthView({ selected, onPickDate, switchToDay }: {
                   </div>
                   <div className={`absolute bottom-1 right-1 ${lunarBadgeCls}`}>{lunar.day}</div>
                   {holidayName && (
-                    <div className="absolute bottom-1.5 left-1.5 right-12 text-[10px] sm:text-xs text-red-600 line-clamp-2">{holidayName}</div>
+                    <div className="absolute bottom-1.5 left-1.5 right-12 text-[10px] sm:text-xs text-red-600 dark:text-red-500 line-clamp-2">{holidayName}</div>
                   )}
                 </button>
               )
             })}
+            {preview && preview.d && (
+              <div className="fixed z-40 max-w-[220px] text-xs card p-2 shadow-lg" style={{ left: Math.min(window.innerWidth-240, preview.x), top: Math.max(8, preview.y) }} role="tooltip" aria-live="polite">
+                <div className="font-medium mb-1">{preview.d.toLocaleDateString('vi-VN')}</div>
+                {preview.lunar && (
+                  <div className="mb-1">AL {preview.lunar.day}/{preview.lunar.month}{preview.lunar.leap?' (nhuận)':''}</div>
+                )}
+                {preview.holiday && <div className="text-red-600 dark:text-red-400 mb-1">{preview.holiday}</div>}
+                {(preview.good || preview.bad) && (
+                  <div className={`${preview.good?'text-emerald-700':'text-rose-700'}`}>{preview.good?'Hoàng đạo':'Hắc đạo'}</div>
+                )}
+                {preview.hasReminder && <div className="text-sky-700">Có nhắc nhở</div>}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-4 text-[11px] text-gray-600 dark:text-gray-400 mt-2">
+            <div className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-emerald-500" /> Hoàng đạo</div>
+            <div className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-rose-500" /> Hắc đạo</div>
+            <div className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-blue-500" /> Nhắc nhở</div>
+            <div className="flex items-center gap-1"><span className="px-1.5 py-0.5 rounded bg-gray-100 border text-gray-600">AL</span> Ngày âm</div>
           </div>
         </div>
         <aside className="card p-3 lg:p-4 h-max">
@@ -140,12 +205,16 @@ export default function MonthView({ selected, onPickDate, switchToDay }: {
                 const lunar = convertSolar2Lunar(e.date.getDate(), e.date.getMonth()+1, e.date.getFullYear())
                 return (
                   <li key={i} className="flex items-start gap-2 text-xs sm:text-sm">
-                    <div className="min-w-[44px] text-right font-medium text-gray-800">{e.date.getDate()}/{e.date.getMonth()+1}</div>
+                    <div className="min-w-[44px] text-right font-medium text-gray-800 dark:text-gray-100">{e.date.getDate()}/{e.date.getMonth()+1}</div>
                     <div className="flex-1">
                       <div className="font-medium">{e.label}</div>
-                      <div className="text-gray-500">AL {lunar.day}/{lunar.month}</div>
+                      <div className="text-gray-500 dark:text-gray-400">AL {lunar.day}/{lunar.month}</div>
                     </div>
-                    <span className={`mt-0.5 rounded px-1.5 py-0.5 text-[10px] ${e.type==='solar'?'bg-blue-50 text-blue-700 border border-blue-200': e.type==='lunar' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-sky-50 text-sky-700 border border-sky-200'}`}>{e.type==='solar'?'DL': e.type==='lunar' ? 'AL' : 'NH'}</span>
+                    <span className={`mt-0.5 rounded px-1.5 py-0.5 text-[10px] ${e.type==='solar'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-400/40'
+                      : e.type==='lunar'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-400/40'
+                        : 'bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-900/20 dark:text-sky-300 dark:border-sky-400/40'}`}>{e.type==='solar'?'DL': e.type==='lunar' ? 'AL' : 'NH'}</span>
                   </li>
                 )
               })}

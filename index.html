@@ -4,10 +4,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0ea5e9" />
+    <meta name="description" content="Lịch Âm – Dương Việt Nam: chuyển đổi âm dương, can chi, giờ hoàng đạo, ngày tốt xấu, lễ tết, nhắc nhở. Hoạt động offline (PWA)." />
+    <meta property="og:title" content="Lịch Âm – Dương" />
+    <meta property="og:description" content="Lịch Việt chính xác: can chi, giờ hoàng đạo, lễ tết, chuyển đổi âm dương, PWA offline." />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="vi_VN" />
+    <meta property="og:site_name" content="Lịch Âm – Dương" />
+    <meta property="og:url" content="/" />
+    <meta property="og:image" content="/icons/icon-512.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Lịch Âm – Dương" />
+    <meta name="twitter:description" content="Lịch Việt chính xác: can chi, giờ hoàng đạo, lễ tết, chuyển đổi âm dương, PWA offline." />
+    <meta name="twitter:image" content="/icons/icon-512.svg" />
+    <link rel="canonical" href="/" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Lịch Âm – Dương</title>
+    <script>
+      (function() {
+        try {
+          var key = 'amlich.theme';
+          var v = localStorage.getItem(key);
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var useDark = v ? (v === 'dark') : prefersDark;
+          if (useDark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
   </head>
-  <body class="bg-gray-50 text-gray-800">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

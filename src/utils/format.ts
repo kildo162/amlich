@@ -6,3 +6,9 @@ export function getToday() { const now = new Date(); return new Date(now.getFull
 // Hiển thị dd/mm/yyyy theo chuẩn Việt Nam
 export function fmtDateVN(d: Date) { return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}` }
 export function fmtDateVNFromISO(iso: string) { return fmtDateVN(parseISO(iso)) }
+
+// Tên tháng âm lịch theo cách gọi Việt Nam
+export function lunarMonthName(m: number) {
+  const names = ['Giêng','Hai','Ba','Tư','Năm','Sáu','Bảy','Tám','Chín','Mười','Một','Chạp']
+  return names[(m-1+12)%12]
+}

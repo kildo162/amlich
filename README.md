@@ -54,6 +54,31 @@ src/
   App.tsx, main.tsx, index.css
 ```
 
+## Hướng dẫn duy trì dữ liệu và mở rộng
+
+### Ngày lễ (Âm + Dương)
+- File: `src/utils/holidays.ts`
+- Mảng `SOLAR_HOLIDAYS`: thêm/cập nhật các ngày cố định theo Dương lịch.
+- Mảng `LUNAR_HOLIDAYS`: thêm/cập nhật các ngày cố định theo Âm lịch (có thể thêm các tên gọi/biệt danh song song để hỗ trợ tìm kiếm).
+- Hàm `searchHolidays(keyword)`: đã hỗ trợ
+  - Tìm theo tên không dấu (chuẩn hóa dấu, chữ `đ` → `d`).
+  - Tìm theo định dạng ngày: `2/9`, `02-09`, `15/8 AL`, `2-9 DL`.
+  - Tự động loại trùng kết quả.
+
+Lưu ý: chỉ thêm các ngày cố định. Các ngày di động theo tuần/thứ cần logic riêng.
+
+### Kiến thức lịch Việt
+- Thành phần: `src/components/KnowledgeModal.tsx`
+- Chỉnh sửa nội dung trong modal (các heading/đoạn văn). Có thể tách thành trang riêng nếu cần routing.
+- Nút mở modal nằm trong `Header.tsx` (nút “📘 Kiến thức”).
+
+### SEO cơ bản
+- File: `index.html`
+  - Đã thêm thẻ OpenGraph/Twitter cơ bản: `og:title`, `og:description`, `og:image`, `twitter:card`, `twitter:image`, `canonical`.
+  - Ảnh chia sẻ dùng `public/icons/icon-512.svg` (có thể thay bằng PNG để hiển thị tốt hơn trên nhiều nền tảng).
+- File: `src/App.tsx`
+  - Cập nhật `document.title` và meta description động theo chế độ xem.
+
 ## Ghi chú kỹ thuật
 - `src/utils/lunar.ts` triển khai các công thức thiên văn (kiểu NQH/astro) cho TZ +7; đủ chính xác 1900–2100.
 - `vite.config.ts` dùng Node API; đã thêm `@types/node` trong devDependencies để tránh lỗi type.

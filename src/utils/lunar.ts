@@ -136,7 +136,11 @@ export const SOLAR_TERMS_VN = [
   'Lập thu','Xử thử','Bạch lộ','Thu phân','Hàn lộ','Sương giáng',
   'Lập đông','Tiểu tuyết','Đại tuyết','Đông chí','Tiểu hàn','Đại hàn'
 ]
-export function solarLongitudeDeg(jdn:number){ return (SunLongitude(jdn)*180/Math.PI + 360) % 360 }
+// Lấy kinh độ mặt trời theo độ, hiệu chỉnh múi giờ VN giống như getSunLongitude
+export function solarLongitudeDeg(jdn:number){
+  const L = SunLongitude(jdn - 0.5 - TZ/24)
+  return (L*180/Math.PI + 360) % 360
+}
 export function solarTermIndexFromJd(jdn:number){
   const deg = solarLongitudeDeg(jdn)
   // 315° là mốc Lập xuân
@@ -144,6 +148,37 @@ export function solarTermIndexFromJd(jdn:number){
   return idx
 }
 export function solarTermNameFromJd(jdn:number){ return SOLAR_TERMS_VN[solarTermIndexFromJd(jdn)] }
+
+// Tìm mốc bắt đầu (JDN) của tiết khí chứa ngày jd
+export function solarTermStartJd(jd:number){
+  const idx = solarTermIndexFromJd(jd)
+  let j = jd
+  while (solarTermIndexFromJd(j-1) === idx) j--
+  return j
+}
+// Ngày bắt đầu tiết khí kế tiếp (so với jd)
+export function nextSolarTermStartJd(jd:number){
+  const idx = solarTermIndexFromJd(jd)
+  let j = jd+1
+  while (solarTermIndexFromJd(j) === idx) j++
+  return j
+}
+// Ngày bắt đầu tiết khí liền trước (so với jd)
+export function prevSolarTermStartJd(jd:number){
+  const start = solarTermStartJd(jd)
+  let k = start-1
+  const prevIdx = solarTermIndexFromJd(k)
+  while (solarTermIndexFromJd(k-1) === prevIdx) k--
+  return k
+}
+export function solarTermPrevNext(jd:number){
+  const prevJd = prevSolarTermStartJd(jd)
+  const nextJd = nextSolarTermStartJd(jd)
+  return {
+    prev: { jd: prevJd, name: solarTermNameFromJd(prevJd), date: jdToDate(prevJd) },
+    next: { jd: nextJd, name: solarTermNameFromJd(nextJd), date: jdToDate(nextJd) },
+  }
+}
 
 // Tiện ích gộp: tính toàn bộ thông tin cho một ngày dương
 export function infoForDate(date: Date){
