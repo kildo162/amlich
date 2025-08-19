@@ -11,7 +11,7 @@
   .card { @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700; }
   .btn { @apply inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg font-medium transition-colors; }
   .btn-sm { @apply px-2.5 py-1.5 rounded-md text-sm; }
-  .btn-ghost { @apply inline-flex items-center justify-center gap-2 px-2.5 py-1.5 rounded-md text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800; }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-2 px-2.5 py-1.5 rounded-md text-sm text-gray-700 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-gray-200 dark:hover:bg-gray-800 dark:focus-visible:ring-offset-gray-900; }
   .btn-primary { @apply btn bg-primary text-white hover:bg-sky-500; }
   .btn-outline { @apply btn border border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700; }
   .link { @apply text-primary hover:underline; }

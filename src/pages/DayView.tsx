@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
+import Tooltip from '@components/Tooltip'
 import { viDate, viWeekday } from '@utils/calendar'
 import { getLunarHoliday, getSolarHoliday } from '@utils/holidays'
 import { dayQuality } from '@utils/dayquality'
 import { infoForDate, solarTermPrevNext } from '@utils/lunar'
 import { getToday, lunarMonthName, fmtDateISO } from '@utils/format'
 import { listReminders, REMINDERS_UPDATED_EVENT } from '@utils/reminders'
+import { getShowNotes, setShowNotes as persistShowNotes, NOTES_VISIBILITY_CHANGED_EVENT, NOTES_VISIBILITY_KEY } from '@utils/prefs'
 
 export default function DayView({ date, onPickDate, onBackToMonth }: { date: Date; onPickDate: (d: Date) => void; onBackToMonth: () => void }) {
   const info = infoForDate(date)
@@ -93,6 +95,20 @@ export default function DayView({ date, onPickDate, onBackToMonth }: { date: Dat
     }
   }
 
+  // Tùy chọn hiển thị ghi chú văn hóa (centralized in prefs)
+  const [showNotes, setShowNotesState] = useState<boolean>(() => getShowNotes())
+  useEffect(() => {
+    const onChange = () => setShowNotesState(getShowNotes())
+    const onStorage = (e: StorageEvent) => { if (e.key === NOTES_VISIBILITY_KEY) setShowNotesState(getShowNotes()) }
+    window.addEventListener(NOTES_VISIBILITY_CHANGED_EVENT as any, onChange as any)
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener(NOTES_VISIBILITY_CHANGED_EVENT as any, onChange as any)
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [])
+  // Tooltip Tiết khí via reusable component
+
   return (
     <section className="mt-6 space-y-6">
       <div className="grid lg:grid-cols-3 gap-6">
@@ -131,15 +147,22 @@ export default function DayView({ date, onPickDate, onBackToMonth }: { date: Dat
                 </div>
               )}
               <div className="h-px my-3 bg-blue-100 dark:bg-blue-900/40" />
-              <div>
-                <span className="inline-flex items-center rounded px-2 py-0.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-400/40">
-                  Tiết khí: <span className="ml-1 font-medium">{tk}</span>
-                </span>
-              </div>
-              <div className="mt-2 text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                <div>Trước: <span className="font-medium">{prevTk.name}</span> ({prevTk.date.day}/{prevTk.date.month}/{prevTk.date.year})</div>
-                <div>Sau: <span className="font-medium">{nextTk.name}</span> ({nextTk.date.day}/{nextTk.date.month}/{nextTk.date.year})</div>
-              </div>
+              <Tooltip
+                content={
+                  <div className="w-max max-w-[240px]">
+                    <div>Trước: <span className="font-medium">{prevTk.name}</span> ({prevTk.date.day}/{prevTk.date.month}/{prevTk.date.year})</div>
+                    <div>Sau: <span className="font-medium">{nextTk.name}</span> ({nextTk.date.day}/{nextTk.date.month}/{nextTk.date.year})</div>
+                  </div>
+                }
+              >
+                <button
+                  type="button"
+                  className="inline-flex items-center rounded px-2 py-0.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
+                  title={`Trước: ${prevTk.name} (${prevTk.date.day}/${prevTk.date.month}/${prevTk.date.year}) • Sau: ${nextTk.name} (${nextTk.date.day}/${nextTk.date.month}/${nextTk.date.year})`}
+                >
+                  Tiết khí: <span className="ml-1 font-medium">{tk}</span> <span aria-hidden className="ml-1">ⓘ</span>
+                </button>
+              </Tooltip>
             </div>
 
             {/* Lunar (AL) */}
@@ -152,8 +175,11 @@ export default function DayView({ date, onPickDate, onBackToMonth }: { date: Dat
                 )}
               </div>
               <div className="mt-1 text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">{lunar.day}/{lunar.month}/{lunar.year}</div>
-              <div className="text-sm text-gray-700 dark:text-gray-200 mt-1 leading-relaxed">
-                Tháng {lunarMonthName(lunar.month)} · <span className="font-medium">{canchi.month}</span>
+              <div className="text-sm text-gray-700 dark:text-gray-200 mt-1 leading-relaxed space-y-1">
+                <div>Tháng {lunarMonthName(lunar.month)}</div>
+                <div>Can chi ngày: <span className="font-medium">{canchi.day}</span></div>
+                <div>Can chi tháng: <span className="font-medium">{canchi.month}</span></div>
+                <div>Can chi năm: <span className="font-medium">{canchi.year}</span></div>
               </div>
               {lunarHoliday && (
                 <div className="mt-2 text-sm leading-relaxed">
@@ -163,34 +189,29 @@ export default function DayView({ date, onPickDate, onBackToMonth }: { date: Dat
               )}
             </div>
           </div>
-          <div className="grid sm:grid-cols-3 gap-5 text-sm leading-relaxed">
-            <div className="card p-5">
-              <div className="text-gray-500">Can chi năm</div>
-              <div className="font-medium">{canchi.year}</div>
-            </div>
-            <div className="card p-5">
-              <div className="text-gray-500">Can chi tháng</div>
-              <div className="font-medium">{canchi.month}</div>
-            </div>
-            <div className="card p-5">
-              <div className="text-gray-500">Can chi ngày</div>
-              <div className="font-medium">{canchi.day}</div>
-            </div>
-          </div>
+          
         </div>
         <div className="card p-5">
-          <h2 className="text-lg font-semibold mb-2">Ngày {q.rate}</h2>
-          <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Trực: <span className="font-medium text-gray-800 dark:text-gray-100">{q.name}</span></div>
-          <div className="text-sm leading-relaxed">
-            <div className="font-medium text-emerald-700 dark:text-emerald-300">Nên làm</div>
-            <ul className="list-disc ml-5 mb-2 space-y-2">
-              {q.good.map((x,i)=>(<li key={i}>{x}</li>))}
-            </ul>
-            <div className="font-medium text-rose-700 dark:text-rose-300">Kiêng kỵ</div>
-            <ul className="list-disc ml-5 space-y-2">
-              {q.bad.map((x,i)=>(<li key={i}>{x}</li>))}
-            </ul>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold">Ngày {q.rate}</h2>
+            <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+              <input type="checkbox" className="accent-sky-600" checked={showNotes} onChange={(e)=>{ setShowNotesState(e.target.checked); persistShowNotes(e.target.checked) }} aria-label="Hiển thị ghi chú văn hóa" />
+              Ghi chú
+            </label>
           </div>
+          <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Trực: <span className="font-medium text-gray-800 dark:text-gray-100">{q.name}</span></div>
+          {showNotes && (
+            <div className="text-sm leading-relaxed">
+              <div className="font-medium text-emerald-700 dark:text-emerald-300">Nên làm</div>
+              <ul className="list-disc ml-5 mb-2 space-y-2">
+                {q.good.map((x,i)=>(<li key={i}>{x}</li>))}
+              </ul>
+              <div className="font-medium text-rose-700 dark:text-rose-300">Kiêng kỵ</div>
+              <ul className="list-disc ml-5 space-y-2">
+                {q.bad.map((x,i)=>(<li key={i}>{x}</li>))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 
@@ -201,8 +222,24 @@ export default function DayView({ date, onPickDate, onBackToMonth }: { date: Dat
             <div className="font-medium mb-2">Giờ hoàng đạo</div>
             <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {gioHoangDao.filter(x=>x.good).map((h,i)=>(
-                <li key={i} className={`px-2 py-1 rounded bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-400/40 ${isToday && h.name===currentHourLabel ? 'ring-2 ring-emerald-300 dark:ring-emerald-400' : ''}`}>
-                  <span className="font-medium">{h.name}</span> <span className="text-gray-600 dark:text-gray-300">{h.range}</span>
+                <li key={i} className="relative">
+                  <Tooltip
+                    id={`gio-tip-good-${i}`}
+                    content={
+                      <div className="text-xs">
+                        <div className="font-medium">Giờ {h.name}</div>
+                        <div>Khoảng: {h.range}</div>
+                        <div className="text-emerald-700 dark:text-emerald-300">Hoàng đạo</div>
+                      </div>
+                    }
+                  >
+                    <span
+                      className={`inline-block px-2 py-1 rounded bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40 ${isToday && h.name===currentHourLabel ? 'ring-2 ring-emerald-300 dark:ring-emerald-400' : ''}`}
+                      title={`Giờ ${h.name} • ${h.range} • Hoàng đạo`}
+                    >
+                      <span className="font-medium">{h.name}</span> <span className="text-gray-600 dark:text-gray-300">{h.range}</span>
+                    </span>
+                  </Tooltip>
                 </li>
               ))}
             </ul>
@@ -211,8 +248,24 @@ export default function DayView({ date, onPickDate, onBackToMonth }: { date: Dat
             <div className="font-medium mb-2">Giờ hắc đạo</div>
             <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {gioHoangDao.filter(x=>!x.good).map((h,i)=>(
-                <li key={i} className={`px-2 py-1 rounded bg-rose-50 border border-rose-200 dark:bg-rose-900/20 dark:border-rose-400/40 ${isToday && h.name===currentHourLabel ? 'ring-2 ring-rose-300 dark:ring-rose-400' : ''}`}>
-                  <span className="font-medium">{h.name}</span> <span className="text-gray-600 dark:text-gray-300">{h.range}</span>
+                <li key={i} className="relative">
+                  <Tooltip
+                    id={`gio-tip-bad-${i}`}
+                    content={
+                      <div className="text-xs">
+                        <div className="font-medium">Giờ {h.name}</div>
+                        <div>Khoảng: {h.range}</div>
+                        <div className="text-rose-700 dark:text-rose-300">Hắc đạo</div>
+                      </div>
+                    }
+                  >
+                    <span
+                      className={`inline-block px-2 py-1 rounded bg-rose-50 border border-rose-200 dark:bg-rose-900/20 dark:border-rose-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/40 ${isToday && h.name===currentHourLabel ? 'ring-2 ring-rose-300 dark:ring-rose-400' : ''}`}
+                      title={`Giờ ${h.name} • ${h.range} • Hắc đạo`}
+                    >
+                      <span className="font-medium">{h.name}</span> <span className="text-gray-600 dark:text-gray-300">{h.range}</span>
+                    </span>
+                  </Tooltip>
                 </li>
               ))}
             </ul>

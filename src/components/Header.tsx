@@ -5,12 +5,13 @@ import { viWeekday } from '@utils/calendar'
 import QuickConvert from './QuickConvert'
 import { applyTheme, getInitialTheme, toggleTheme } from '@utils/theme'
 
-export default function Header({ view, setView, selected, onPickDate, onOpenKnowledge }: {
+export default function Header({ view, setView, selected, onPickDate, onOpenKnowledge, onOpenShortcuts }: {
   view: ViewMode
   setView: (v: ViewMode) => void
   selected: Date
   onPickDate: (d: Date) => void
   onOpenKnowledge: () => void
+  onOpenShortcuts: () => void
 }) {
   const [openConvert, setOpenConvert] = useState(false)
   const [theme, setTheme] = useState<'light'|'dark'>(() => getInitialTheme())
@@ -36,7 +37,7 @@ export default function Header({ view, setView, selected, onPickDate, onOpenKnow
         <div className="max-w-6xl mx-auto px-3 sm:px-5 py-0.5 flex items-center gap-2">
           {/* Left: segmented control + navigation */}
           <div className="flex items-center gap-2">
-            <div className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm p-0">
+            <div className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm p-0" role="group" aria-label="Chuyển đổi chế độ xem">
               <button
                 className={`btn-ghost px-1.5 py-0.5 ${view==='month' ? 'bg-gray-100 dark:bg-gray-700 font-semibold shadow-inner' : ''}`}
                 onClick={()=>setView('month')}
@@ -74,6 +75,7 @@ export default function Header({ view, setView, selected, onPickDate, onOpenKnow
           {/* Right: actions */}
           <div className="flex items-center gap-1.5">
             <button className="btn-ghost px-1.5 py-0.5" onClick={onOpenKnowledge} aria-label="Kiến thức">📘 <span className="hidden sm:inline">Kiến thức</span></button>
+            <button className="btn-ghost px-1.5 py-0.5" onClick={onOpenShortcuts} aria-label="Phím tắt">❓ <span className="hidden sm:inline">Phím tắt</span></button>
             <button className="btn-ghost px-1.5 py-0.5" onClick={onToggleTheme} aria-label="Đổi giao diện">
               {theme==='dark' ? '☀' : '🌙'} <span className="hidden sm:inline">{theme==='dark' ? 'Sáng' : 'Tối'}</span>
             </button>

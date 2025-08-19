@@ -2,10 +2,12 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 const DayView = lazy(() => import('@pages/DayView'))
 const MonthView = lazy(() => import('@pages/MonthView'))
 import Header from '@components/Header'
+import ShortcutsModal from '@components/ShortcutsModal'
 import HolidaySearch from '@components/HolidaySearch'
 import ReminderList from '@components/ReminderList'
 import KnowledgeModal from '@components/KnowledgeModal'
 import { getToday, fmtDateISO, parseISO } from '@utils/format'
+import { getShowNotes, setShowNotes } from '@utils/prefs'
 
 export type ViewMode = 'day' | 'month'
 
@@ -13,6 +15,7 @@ export default function App() {
   const [view, setView] = useState<ViewMode>('month')
   const [selected, setSelected] = useState<Date>(() => getToday())
   const [openKnowledge, setOpenKnowledge] = useState(false)
+  const [openShortcuts, setOpenShortcuts] = useState(false)
 
   // Helpers for URL <-> state sync
   const buildUrl = (v: ViewMode, d: Date) => `${location.pathname}?view=${v}&d=${fmtDateISO(d)}${location.hash}`
@@ -84,12 +87,21 @@ export default function App() {
     }
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return
+      // Focus search with '/'
+      if (e.key === '/') {
+        e.preventDefault()
+        const el = document.getElementById('holiday-search-input') as HTMLInputElement | null
+        if (el) { el.focus(); try { el.select() } catch {} }
+        return
+      }
       if (e.key === 't' || e.key === 'T') {
         e.preventDefault(); const today = getToday(); onPickDateWithHistory(today)
         return
       }
       if (e.key === 'm' || e.key === 'M') { e.preventDefault(); setViewWithHistory('month'); return }
       if (e.key === 'd' || e.key === 'D') { e.preventDefault(); setViewWithHistory('day'); return }
+      if (e.key === '?' ) { e.preventDefault(); setOpenShortcuts(true); return }
+      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); setShowNotes(!getShowNotes()); return }
       if (e.key === 'PageUp') {
         e.preventDefault(); const d = new Date(selected); d.setMonth(d.getMonth()-1); onPickDateWithHistory(d); return
       }
@@ -134,9 +146,10 @@ export default function App() {
         selected={selected}
         onPickDate={onPickDateWithHistory}
         onOpenKnowledge={() => setOpenKnowledge(true)}
+        onOpenShortcuts={() => setOpenShortcuts(true)}
       />
 
-      <main className="max-w-6xl mx-auto px-3 sm:px-6 pb-24">
+      <main id="main-content" tabIndex={-1} className="max-w-6xl mx-auto px-3 sm:px-6 pb-24">
         <Suspense fallback={<div className="p-6 text-sm text-gray-500">Đang tải...</div>}>
           {view === 'month' ? (
             <div className="animate-fade-in">
@@ -161,6 +174,7 @@ export default function App() {
         </section>
       </main>
       <KnowledgeModal open={openKnowledge} onClose={() => setOpenKnowledge(false)} />
+      <ShortcutsModal open={openShortcuts} onClose={() => setOpenShortcuts(false)} />
     </div>
   )
 }

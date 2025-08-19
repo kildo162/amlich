@@ -9,8 +9,10 @@ export default function HolidaySearch() {
     <div>
       <div className="flex items-center gap-2 mb-3">
         <input
+          id="holiday-search-input"
           value={q}
           onChange={e=>setQ(e.target.value)}
+          aria-label="Tìm kiếm ngày lễ"
           placeholder="Nhập tên ngày lễ (ví dụ: Tết, rằm, giỗ tổ...)"
           className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
